@@ -14,11 +14,12 @@ provider "devops-bootcamp" {}
 #   value = devops-bootcamp_engineers.engineers
 # }
 
-resource "devops-bootcamp_engineers" "test" {
-  name  = "carson"
-  email = "carson.culler@liatrio.com"
+resource "devops-bootcamp_engineers" "engineers" {
+  name  = "carson-two"
+  email = "carsonculler@liatrio.com"
 }
 
-output "engineers" {
-  value = devops-bootcamp_engineers.test
-}
+# resource "devops-bootcamp_engineers" "test" {
+#   name  = "carson"
+#   email = "test@liatrio.com"
+# }

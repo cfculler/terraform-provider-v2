@@ -102,12 +102,8 @@ func (r *engineersResource) Create(ctx context.Context, req resource.CreateReque
 	// Generate API request body from plan
 	engineerItem := map[string]string{"name": plan.Name.ValueString(), "email": plan.Email.ValueString()}
 
-	// engineerItem := devops_resource.Engineer{
-	// 	Name:  plan.Name.ValueString(),
-	// 	Email: plan.Email.ValueString(),
-	// }
-
 	jsonBody, err := json.Marshal(engineerItem)
+	//url := r.Host + "/engineers"
 
 	request, err := http.NewRequest(http.MethodPost, "http://localhost:8080/engineers", bytes.NewBuffer(jsonBody))
 	response, err := r.client.Do(request)
@@ -120,13 +116,13 @@ func (r *engineersResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	// Return error if the HTTP status code is not 200 OK
-	if response.StatusCode != http.StatusOK {
+	// Return error if the HTTP status code is not 201 OK
+	if response.StatusCode != 201 {
 		resp.Diagnostics.AddError(
 			"Unable to Create Resource",
 			"An unexpected error occurred while attempting to create the resource. "+
 				"Please retry the operation or report this issue to the provider developers.\n\n"+
-				"HTTP Status: "+bytes.NewBuffer(jsonBody).String(),
+				"HTTP Status: "+response.Status,
 		)
 		return
 	}
@@ -199,8 +195,97 @@ func (r *engineersResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *engineersResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Retrieve values from plan
+	var plan *engineersResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	url := fmt.Sprintf("http://localhost:8080/engineers/%s", plan.ID.ValueString())
+
+	engineerItem := map[string]string{"name": plan.Name.ValueString(), "email": plan.Email.ValueString()}
+	jsonBody, err := json.Marshal(engineerItem)
+
+	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonBody))
+	response, err := r.client.Do(request)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating engineers",
+			"Could not update engineers: "+err.Error(),
+		)
+		return
+	}
+
+	defer response.Body.Close()
+
+	// Return error if the HTTP status code is not 200 OK
+	if response.StatusCode != http.StatusOK {
+		resp.Diagnostics.AddError(
+			"Unable to Update Resource",
+			"An unexpected error occurred while attempting to update the resource. "+
+				"Please retry the operation or report this issue to the provider developers.\n\n"+
+				"HTTP Status: "+response.Status,
+		)
+		return
+	}
+
+	var engineer devops_resource.Engineer
+	err = json.NewDecoder(response.Body).Decode(&engineer)
+	if err != nil {
+		// do something
+	}
+	//Map response body to schema and populate Computed attribute values
+	plan.ID = types.StringValue(engineer.Id)
+	plan.Name = types.StringValue(engineer.Name)
+	plan.Email = types.StringValue(engineer.Email)
+	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *engineersResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Retrieve values from plan
+	var plan *engineersResourceModel
+	diags := req.State.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	url := fmt.Sprintf("http://localhost:8080/engineers/%s", plan.ID.ValueString())
+
+	request, err := http.NewRequest(http.MethodDelete, url, nil)
+	response, err := r.client.Do(request)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading engineers",
+			"Could not read engineers: "+err.Error(),
+		)
+		return
+	}
+
+	defer response.Body.Close()
+
+	// Return error if the HTTP status code is not 200 OK
+	if response.StatusCode != http.StatusOK {
+		resp.Diagnostics.AddError(
+			"Unable to Delete Resource",
+			"An unexpected error occurred while attempting to delete the resource. "+
+				"Please retry the operation or report this issue to the provider developers.\n\n"+
+				"HTTP Status: "+response.Status,
+		)
+		return
+	}
+
+	resp.State.RemoveResource(ctx)
+
+	return
 }

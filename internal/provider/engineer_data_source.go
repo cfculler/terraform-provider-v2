@@ -31,9 +31,9 @@ type engineersDataSource struct {
 }
 
 // engineersDataSourceModel describes the data source data model.
-// type engineersDataSourceModel struct {
-// 	Engineers []engineersModel `tfsdk:"engineers"`
-// }
+type engineersDataSourceModel struct {
+	Engineers []engineersModel `tfsdk:"engineers"`
+}
 
 // engineersModel maps engineers schema data.
 type engineersModel struct {
@@ -101,7 +101,7 @@ func (d *engineersDataSource) Configure(ctx context.Context, req datasource.Conf
 
 func (d *engineersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 
-	var state engineersModel
+	var state engineersDataSourceModel
 
 	request, err := http.NewRequest(http.MethodGet, "http://localhost:8080/engineers", nil)
 	if err != nil {
@@ -115,16 +115,21 @@ func (d *engineersDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	defer response.Body.Close() // Close the response body when done
 
-	var engineer devops_resource.Engineer
-	err = json.NewDecoder(response.Body).Decode(&engineer)
+	var engineers []devops_resource.Engineer
+	err = json.NewDecoder(response.Body).Decode(&engineers)
 	if err != nil {
 		return
 	}
 
 	// Map response body to model
-	state.ID = types.StringValue(engineer.Id)
-	state.Name = types.StringValue(engineer.Name)
-	state.Email = types.StringValue(engineer.Email)
+	for _, engineer := range engineers {
+		temp := engineersModel{
+			ID:    types.StringValue(engineer.Id),
+			Name:  types.StringValue(engineer.Name),
+			Email: types.StringValue(engineer.Email),
+		}
+		state.Engineers = append(state.Engineers, temp)
+	}
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)

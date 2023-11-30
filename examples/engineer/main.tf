@@ -8,7 +8,10 @@ terraform {
 
 provider "devops-bootcamp" {}
 
-data "devops-bootcamp_engineers" "engineers" {}
+resource "devops-bootcamp_engineers" "engineers" {
+  name  = "carson"
+  email = "carsonculler@liatrio.com"
+}
 
 # output "engineers" {
 #   value = data.devops-bootcamp_engineer.engineers
